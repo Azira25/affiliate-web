@@ -21,8 +21,8 @@
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
 
-    <!-- LOAD CONFIG EXTERNAL (Untuk Password) -->
-    <!-- File ini (config.js) harus ada di folder yang sama di komputer Anda -->
+    <!-- LOAD CONFIG EXTERNAL (Wajib untuk Login) -->
+    <!-- Jika di local, pastikan file config.js ada. Jika di Vercel, pastikan Build Command sudah benar. -->
     <script src="config.js"></script>
 
     <script>
@@ -74,7 +74,6 @@
         .img-loading { opacity: 0; transition: opacity 0.3s ease-in-out; }
         .img-loaded { opacity: 1; }
 
-        /* Loader */
         .loader {
             border: 3px solid rgba(255,255,255,0.1);
             border-left-color: #fff;
@@ -88,7 +87,7 @@
 </head>
 <body class="bg-animated text-white min-h-screen font-sans selection:bg-purple-500 selection:text-white relative">
 
-    <!-- Admin Floating Button (Visible when logged in) -->
+    <!-- Admin Floating Button -->
     <button id="addBtn" onclick="openModal()" class="hidden fixed bottom-6 right-6 z-40 bg-purple-600 hover:bg-purple-500 text-white w-14 h-14 rounded-full shadow-lg shadow-purple-600/30 flex items-center justify-center transition transform hover:scale-110">
         <i class="fas fa-plus text-xl"></i>
     </button>
@@ -101,7 +100,7 @@
 
     <div class="max-w-xl mx-auto px-4 py-8 pb-20">
         
-        <!-- Header / Profile Section -->
+        <!-- Header -->
         <header class="text-center mb-8 animate-fade-in-down">
             <div class="relative w-28 h-28 mx-auto mb-4 group">
                 <div class="absolute inset-0 bg-gradient-to-tr from-purple-500 to-blue-500 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-500"></div>
@@ -184,7 +183,7 @@
         </div>
     </div>
 
-    <!-- Product Editor Modal (Add/Edit) -->
+    <!-- Editor Modal -->
     <div id="editorModal" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm sm:p-4">
         <div class="glass-strong rounded-t-3xl sm:rounded-2xl p-6 w-full max-w-lg relative max-h-[90vh] overflow-y-auto transform transition-all translate-y-20 opacity-0" id="editorContent">
             <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
@@ -192,12 +191,10 @@
             
             <form id="productForm" onsubmit="saveProduct(event)" class="space-y-4">
                 <input type="hidden" id="editId">
-                
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Nama Produk</label>
                     <input type="text" id="pTitle" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 focus:border-purple-500 focus:outline-none">
                 </div>
-
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">Kategori</label>
@@ -213,17 +210,14 @@
                         <input type="text" id="pPrice" placeholder="Rp 50.000" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 focus:border-purple-500 focus:outline-none">
                     </div>
                 </div>
-
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">URL Gambar (Unsplash/Lainnya)</label>
                     <input type="url" id="pImage" required placeholder="https://..." class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 focus:border-purple-500 focus:outline-none">
                 </div>
-
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Deskripsi Singkat</label>
                     <textarea id="pDesc" rows="2" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 focus:border-purple-500 focus:outline-none"></textarea>
                 </div>
-
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs text-orange-400 mb-1">Link Shopee</label>
@@ -234,17 +228,14 @@
                         <input type="url" id="pToped" placeholder="https://tokopedia..." class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 focus:border-green-500 focus:outline-none">
                     </div>
                 </div>
-
                 <div class="pt-4">
-                    <button type="submit" id="saveBtn" class="w-full bg-white text-black font-bold py-3 rounded-lg hover:bg-gray-200 transition">
-                        Simpan Produk
-                    </button>
+                    <button type="submit" id="saveBtn" class="w-full bg-white text-black font-bold py-3 rounded-lg hover:bg-gray-200 transition">Simpan Produk</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Toast Notification -->
+    <!-- Toast -->
     <div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 glass px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 transition-all duration-300 translate-y-20 opacity-0 z-[60]">
         <i class="fas fa-check-circle text-green-400"></i>
         <span class="text-sm font-medium" id="toastMsg">Berhasil!</span>
@@ -258,33 +249,28 @@
         const db = firebase.firestore();
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        // Global State
         let allProducts = [];
-        let isAdmin = false; // UI State for editing
+        let isAdmin = false;
         let currentCategory = 'all';
 
         // --- 2. Auth & Startup ---
         async function initApp() {
-            // Auth to Firebase
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                 await auth.signInWithCustomToken(__initial_auth_token);
             } else {
                 await auth.signInAnonymously();
             }
 
-            // Check if User was previously "Admin" via local storage
             const storedAdmin = localStorage.getItem('isAdmin');
             if (storedAdmin === 'true') {
                 enableAdminMode();
             }
-
-            // Start Listening to Data
             subscribeToProducts();
         }
 
         initApp();
 
-        // --- 3. Data Logic (Firestore) ---
+        // --- 3. Firestore Logic ---
         function subscribeToProducts() {
             const userId = auth.currentUser?.uid;
             if(!userId) return;
@@ -323,79 +309,48 @@
                     tokopediaLink: "https://tokopedia.com",
                     desc: "Suara thocky, enak buat ngetik seharian.",
                     createdAt: Date.now()
-                },
-                {
-                    title: "Serum Wajah Glowing 30ml",
-                    category: "beauty",
-                    image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=600&h=400",
-                    price: "Rp 89.000",
-                    shopeeLink: "https://shopee.co.id",
-                    tokopediaLink: "https://tokopedia.com",
-                    desc: "Tekstur ringan, cepat meresap.",
-                    createdAt: Date.now() - 1000
                 }
             ];
-            
             const batch = db.batch();
-            seeds.forEach(item => {
-                const newDoc = colRef.doc();
-                batch.set(newDoc, item);
-            });
+            seeds.forEach(item => { batch.set(colRef.doc(), item); });
             await batch.commit();
         }
 
-        // --- 4. UI Logic: Render ---
+        // --- 4. Render & UI ---
         function filterAndRender() {
             const keyword = document.getElementById('searchInput').value.toLowerCase();
-            
             const filtered = allProducts.filter(p => {
                 const matchesSearch = p.title.toLowerCase().includes(keyword) || (p.desc && p.desc.toLowerCase().includes(keyword));
                 const matchesCat = currentCategory === 'all' || p.category === currentCategory;
                 return matchesSearch && matchesCat;
             });
-
             renderGrid(filtered);
         }
 
         function renderGrid(items) {
             const grid = document.getElementById('productGrid');
             const noRes = document.getElementById('noResults');
-            
             grid.innerHTML = '';
             
             if (items.length === 0) {
                 noRes.classList.remove('hidden');
             } else {
                 noRes.classList.add('hidden');
-                
                 items.forEach((item, index) => {
                     const shopeeBtn = item.shopeeLink ? 
-                        `<a href="${item.shopeeLink}" target="_blank" class="flex-1 flex items-center justify-center gap-2 bg-[#EE4D2D]/10 hover:bg-[#EE4D2D] text-[#EE4D2D] hover:text-white border border-[#EE4D2D]/50 py-2.5 rounded-lg transition-all duration-300 text-sm font-medium">
-                            <i class="fas fa-shopping-bag"></i> Shopee
-                        </a>` : '';
-                    
+                        `<a href="${item.shopeeLink}" target="_blank" class="flex-1 flex items-center justify-center gap-2 bg-[#EE4D2D]/10 hover:bg-[#EE4D2D] text-[#EE4D2D] hover:text-white border border-[#EE4D2D]/50 py-2.5 rounded-lg transition-all duration-300 text-sm font-medium"><i class="fas fa-shopping-bag"></i> Shopee</a>` : '';
                     const topedBtn = item.tokopediaLink ? 
-                        `<a href="${item.tokopediaLink}" target="_blank" class="flex-1 flex items-center justify-center gap-2 bg-[#03AC0E]/10 hover:bg-[#03AC0E] text-[#03AC0E] hover:text-white border border-[#03AC0E]/50 py-2.5 rounded-lg transition-all duration-300 text-sm font-medium">
-                            <i class="fas fa-store"></i> Tokopedia
-                        </a>` : '';
-
+                        `<a href="${item.tokopediaLink}" target="_blank" class="flex-1 flex items-center justify-center gap-2 bg-[#03AC0E]/10 hover:bg-[#03AC0E] text-[#03AC0E] hover:text-white border border-[#03AC0E]/50 py-2.5 rounded-lg transition-all duration-300 text-sm font-medium"><i class="fas fa-store"></i> Tokopedia</a>` : '';
                     let adminControls = '';
                     if (isAdmin) {
                         adminControls = `
                             <div class="absolute top-2 right-2 flex gap-2 z-10">
-                                <button onclick="editProduct('${item.id}')" class="bg-blue-600 text-white p-2 rounded-lg shadow-lg hover:bg-blue-500 transition text-xs">
-                                    <i class="fas fa-pen"></i>
-                                </button>
-                                <button onclick="deleteProduct('${item.id}')" class="bg-red-600 text-white p-2 rounded-lg shadow-lg hover:bg-red-500 transition text-xs">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        `;
+                                <button onclick="editProduct('${item.id}')" class="bg-blue-600 text-white p-2 rounded-lg shadow-lg hover:bg-blue-500 transition text-xs"><i class="fas fa-pen"></i></button>
+                                <button onclick="deleteProduct('${item.id}')" class="bg-red-600 text-white p-2 rounded-lg shadow-lg hover:bg-red-500 transition text-xs"><i class="fas fa-trash"></i></button>
+                            </div>`;
                     }
-
                     const card = document.createElement('div');
                     card.className = 'glass rounded-2xl p-3 flex gap-4 items-center group hover:bg-white/5 transition duration-300 relative';
-                    
                     card.innerHTML = `
                         ${adminControls}
                         <div class="w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-gray-800 relative">
@@ -404,18 +359,12 @@
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-start mb-1">
                                 <h3 class="text-sm font-semibold text-white truncate pr-2">${item.title}</h3>
-                                <button onclick="copyLink('${item.shopeeLink || item.tokopediaLink}')" class="text-gray-500 hover:text-white transition">
-                                    <i class="fas fa-link text-xs"></i>
-                                </button>
+                                <button onclick="copyLink('${item.shopeeLink || item.tokopediaLink}')" class="text-gray-500 hover:text-white transition"><i class="fas fa-link text-xs"></i></button>
                             </div>
                             <p class="text-xs text-gray-400 mb-2 line-clamp-1">${item.desc || ''}</p>
                             <div class="text-sm font-bold text-white mb-3">${item.price}</div>
-                            <div class="flex gap-2">
-                                ${shopeeBtn}
-                                ${topedBtn}
-                            </div>
-                        </div>
-                    `;
+                            <div class="flex gap-2">${shopeeBtn}${topedBtn}</div>
+                        </div>`;
                     grid.appendChild(card);
                 });
             }
@@ -425,9 +374,7 @@
 
         function filterCategory(cat) {
             currentCategory = cat;
-            const btns = document.querySelectorAll('.cat-btn');
-            
-            btns.forEach(btn => {
+            document.querySelectorAll('.cat-btn').forEach(btn => {
                 if (btn.innerText.toLowerCase().includes(cat === 'all' ? 'semua' : cat) || btn.getAttribute('onclick').includes(cat)) {
                     btn.className = "cat-btn active px-4 py-1.5 rounded-full text-xs font-medium bg-white text-black transition-all whitespace-nowrap shadow-[0_0_15px_rgba(255,255,255,0.3)]";
                 } else {
@@ -438,12 +385,8 @@
         }
 
         function copyLink(link) {
-            if(link && link !== 'undefined') {
-                navigator.clipboard.writeText(link);
-                showToast("Link disalin!", "success");
-            } else {
-                showToast("Tidak ada link tersedia", "error");
-            }
+            if(link && link !== 'undefined') { navigator.clipboard.writeText(link); showToast("Link disalin!"); } 
+            else { showToast("Tidak ada link tersedia", "error"); }
         }
 
         function showToast(msg, type = "success") {
@@ -453,27 +396,29 @@
             setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 2000);
         }
 
-        // --- 6. Admin System ---
+        // --- Login Logic (Updated) ---
         function showLoginModal() {
             document.getElementById('loginModal').classList.remove('hidden');
-            setTimeout(() => {
-                document.getElementById('loginContent').classList.remove('scale-95', 'opacity-0');
-            }, 10);
+            setTimeout(() => document.getElementById('loginContent').classList.remove('scale-95', 'opacity-0'), 10);
         }
-
         function closeLoginModal() {
             document.getElementById('loginContent').classList.add('scale-95', 'opacity-0');
-            setTimeout(() => {
-                document.getElementById('loginModal').classList.add('hidden');
-            }, 300);
+            setTimeout(() => document.getElementById('loginModal').classList.add('hidden'), 300);
         }
 
         function handleLogin(e) {
             e.preventDefault();
             const pass = document.getElementById('passcode').value;
             
-            // SECURITY CHECK: Mengambil password dari config.js jika ada, jika tidak (di preview) pakai default
-            const correctPass = (typeof ADMIN_CONFIG !== 'undefined' ? ADMIN_CONFIG.password : 'admin123');
+            // SECURITY UPDATE: Memastikan ADMIN_CONFIG ada (dari config.js)
+            if (typeof ADMIN_CONFIG === 'undefined') {
+                showToast("Error: config.js belum dimuat", "error");
+                console.error("ADMIN_CONFIG is missing. Make sure config.js is loaded.");
+                return;
+            }
+
+            // Hanya menggunakan password dari config.js
+            const correctPass = ADMIN_CONFIG.password;
 
             if (pass === correctPass) {
                 enableAdminMode();
@@ -481,7 +426,7 @@
                 showToast("Login Berhasil", "success");
                 localStorage.setItem('isAdmin', 'true');
             } else {
-                showToast("Kode salah!", "error");
+                showToast("Password salah!", "error");
             }
         }
 
@@ -501,22 +446,16 @@
             filterAndRender();
         }
 
-        // --- 7. CRUD Operations ---
-        const modal = document.getElementById('editorModal');
-        const modalContent = document.getElementById('editorContent');
-
+        // --- CRUD Modal ---
         function openModal(isEdit = false) {
             document.getElementById('modalTitle').innerText = isEdit ? "Edit Produk" : "Tambah Produk";
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modalContent.classList.remove('translate-y-20', 'opacity-0');
-            }, 10);
+            document.getElementById('editorModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('editorContent').classList.remove('translate-y-20', 'opacity-0'), 10);
         }
-
         function closeModal() {
-            modalContent.classList.add('translate-y-20', 'opacity-0');
+            document.getElementById('editorContent').classList.add('translate-y-20', 'opacity-0');
             setTimeout(() => {
-                modal.classList.add('hidden');
+                document.getElementById('editorModal').classList.add('hidden');
                 document.getElementById('productForm').reset();
                 document.getElementById('editId').value = '';
             }, 300);
@@ -525,7 +464,6 @@
         function editProduct(id) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
-
             document.getElementById('editId').value = id;
             document.getElementById('pTitle').value = product.title;
             document.getElementById('pCategory').value = product.category;
@@ -534,7 +472,6 @@
             document.getElementById('pDesc').value = product.desc || '';
             document.getElementById('pShopee').value = product.shopeeLink || '';
             document.getElementById('pToped').value = product.tokopediaLink || '';
-
             openModal(true);
         }
 
@@ -557,38 +494,22 @@
             };
 
             const colRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('products');
-
             try {
-                if (id) {
-                    await colRef.doc(id).update(data);
-                    showToast("Produk diperbarui!");
-                } else {
-                    await colRef.add(data);
-                    showToast("Produk ditambahkan!");
-                }
+                if (id) await colRef.doc(id).update(data);
+                else await colRef.add(data);
+                showToast("Berhasil disimpan!");
                 closeModal();
-            } catch (err) {
-                console.error(err);
-                showToast("Gagal menyimpan", "error");
-            } finally {
-                btn.innerHTML = 'Simpan Produk';
-                btn.disabled = false;
-            }
+            } catch (err) { showToast("Gagal menyimpan", "error"); } 
+            finally { btn.innerHTML = 'Simpan Produk'; btn.disabled = false; }
         }
 
         async function deleteProduct(id) {
-            if(confirm("Yakin ingin menghapus produk ini?")) {
+            if(confirm("Hapus produk ini?")) {
                 const colRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('products');
-                try {
-                    await colRef.doc(id).delete();
-                    showToast("Produk dihapus");
-                } catch (err) {
-                    showToast("Gagal menghapus", "error");
-                }
+                try { await colRef.doc(id).delete(); showToast("Produk dihapus"); }
+                catch (err) { showToast("Gagal menghapus", "error"); }
             }
         }
     </script>
 </body>
-
 </html>
-
