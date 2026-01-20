@@ -1,9 +1,0 @@
-Abaikan file konfigurasi yang berisi password
-
-config.js
-
-Abaikan file sistem atau editor (opsional)
-
-.DS_Store
-.vscode/
-node_modules/
