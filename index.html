@@ -16,13 +16,12 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+    <!-- Firebase SDKs (Versi 8 - Compat agar stabil) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-    <!-- LOAD CONFIG EXTERNAL (Wajib untuk Login) -->
-    <!-- Jika di local, pastikan file config.js ada. Jika di Vercel, pastikan Build Command sudah benar. -->
+    <!-- LOAD CONFIG EXTERNAL (Password Admin) -->
     <script src="config.js" onerror="console.error('Gagal memuat config.js. Pastikan file ini ada.');"></script>
 
     <script>
@@ -242,12 +241,41 @@
     </div>
 
     <script>
-        // --- 1. Firebase Initialization ---
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = firebase.initializeApp(firebaseConfig);
+        // --- 1. FIREBASE CONFIGURATION (WAJIB DIISI) ---
+        // Salin "const firebaseConfig = {...}" dari Firebase Console dan paste di bawah ini.
+        // Ganti kode placeholder ini dengan config asli Anda.
+        
+        // CONTOH FORMAT YANG BENAR:
+        // const firebaseConfig = {
+        //   apiKey: "AIzaSyD-xxxxxxxxx",
+        //   authDomain: "my-app.firebaseapp.com",
+        //   projectId: "my-app",
+        //   storageBucket: "my-app.firebasestorage.app",
+        //   messagingSenderId: "123456",
+        //   appId: "1:123456:web:xxxxxx"
+        // };
+
+        const firebaseConfig = {
+                    apiKey: "AIzaSyBmyDlqZuaNKAaUNGbBcSsaOvWZjwbRU5I",
+                    authDomain: "affiliate-website-4e238.firebaseapp.com",
+                    projectId: "affiliate-website-4e238",
+                    storageBucket: "affiliate-website-4e238.firebasestorage.app",
+                    messagingSenderId: "131801790037",
+                    appId: "1:131801790037:web:876576ca19d5c3179906dc",
+                    measurementId: "G-JR16W19XY8"
+        };
+
+        // Cek apakah user sudah memasukkan config atau belum
+        if (Object.keys(firebaseConfig).length === 0) {
+            console.error("Firebase Config belum diisi! Silakan edit file index.html dan masukkan config dari Firebase Console.");
+            alert("Setup Error: Firebase Config belum diisi di index.html. Silakan lihat console/source code.");
+        } else {
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+        }
+
         const auth = firebase.auth();
         const db = firebase.firestore();
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         let allProducts = [];
         let isAdmin = false;
@@ -255,10 +283,13 @@
 
         // --- 2. Auth & Startup ---
         async function initApp() {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await auth.signInWithCustomToken(__initial_auth_token);
-            } else {
+            // Menggunakan Anonymous Auth agar website bisa diakses publik tanpa login user
+            // Pastikan "Anonymous" sudah di-enable di Firebase Console > Authentication > Sign-in method
+            try {
                 await auth.signInAnonymously();
+            } catch (error) {
+                console.error("Error Auth:", error);
+                // Jika error, mungkin karena config belum benar atau auth anonymous belum aktif
             }
 
             const storedAdmin = localStorage.getItem('isAdmin');
@@ -272,16 +303,18 @@
 
         // --- 3. Firestore Logic ---
         function subscribeToProducts() {
-            const userId = auth.currentUser?.uid;
-            if(!userId) return;
-
-            const colRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('products');
+            // Path Database yang Disederhanakan untuk Personal Project
+            // Menggunakan koleksi bernama 'products' langsung di root database
+            const colRef = db.collection('products');
 
             colRef.onSnapshot((snapshot) => {
                 document.getElementById('loadingIndicator').style.display = 'none';
                 
                 if (snapshot.empty && allProducts.length === 0) {
-                    seedInitialData(colRef);
+                    // Jika database kosong melompong (pertama kali), kita isi data dummy
+                    // Namun hanya jika user admin (opsional) atau otomatis
+                    // Di sini kita biarkan kosong atau user tambah manual via editor
+                    document.getElementById('noResults').classList.remove('hidden');
                     return;
                 }
 
@@ -290,30 +323,13 @@
                     allProducts.push({ id: doc.id, ...doc.data() });
                 });
 
+                // Sortir berdasarkan waktu (terbaru di atas)
                 allProducts.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
                 filterAndRender();
             }, (error) => {
                 console.error("Error fetching:", error);
-                document.getElementById('loadingIndicator').innerHTML = '<p class="text-red-500">Gagal memuat data.</p>';
+                document.getElementById('loadingIndicator').innerHTML = '<p class="text-red-500 text-center">Gagal memuat data.<br><span class="text-xs text-gray-400">Cek Console Log & pastikan Firestore Rules allow read/write.</span></p>';
             });
-        }
-
-        async function seedInitialData(colRef) {
-            const seeds = [
-                {
-                    title: "Mechanical Keyboard 75% RGB",
-                    category: "tech",
-                    image: "https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&w=600&h=400",
-                    price: "Rp 850.000",
-                    shopeeLink: "https://shopee.co.id",
-                    tokopediaLink: "https://tokopedia.com",
-                    desc: "Suara thocky, enak buat ngetik seharian.",
-                    createdAt: Date.now()
-                }
-            ];
-            const batch = db.batch();
-            seeds.forEach(item => { batch.set(colRef.doc(), item); });
-            await batch.commit();
         }
 
         // --- 4. Render & UI ---
@@ -429,7 +445,6 @@
                 document.getElementById('passcode').value = ''; // Reset input agar aman
             } else {
                 showToast("Password salah!", "error");
-                console.log("Input (Trimmed):", pass); // Debug untuk melihat apa yang sebenarnya diketik
             }
         }
 
@@ -496,19 +511,24 @@
                 createdAt: id ? (allProducts.find(p => p.id === id)?.createdAt || Date.now()) : Date.now()
             };
 
-            const colRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('products');
+            // PATH SIMPLIFIED: Langsung ke collection 'products'
+            const colRef = db.collection('products');
+            
             try {
                 if (id) await colRef.doc(id).update(data);
                 else await colRef.add(data);
                 showToast("Berhasil disimpan!");
                 closeModal();
-            } catch (err) { showToast("Gagal menyimpan", "error"); } 
+            } catch (err) { 
+                console.error(err);
+                showToast("Gagal menyimpan", "error"); 
+            } 
             finally { btn.innerHTML = 'Simpan Produk'; btn.disabled = false; }
         }
 
         async function deleteProduct(id) {
             if(confirm("Hapus produk ini?")) {
-                const colRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('products');
+                const colRef = db.collection('products');
                 try { await colRef.doc(id).delete(); showToast("Produk dihapus"); }
                 catch (err) { showToast("Gagal menghapus", "error"); }
             }
